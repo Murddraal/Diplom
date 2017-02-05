@@ -1,0 +1,19 @@
+import translator as tr
+# coding: utf8
+
+
+def main():
+    test = tr.translator()
+    x = test.csv_reading('emails.csv')
+    k = 1
+    for i in x:
+        print(k)
+        k += 1
+        text = test.text_parsing(i)
+        tr_text = test.translating(text)
+        test.writing('translation.docx', text, tr_text)
+        print("wr")
+
+
+if __name__ == '__main__':
+    main()
