@@ -3,7 +3,7 @@ import translator as tr
 
 
 def main():
-    test = tr.translator()
+    test = tr.translator('ru')
     x = test.csv_reading('emails.csv')
     k = 1
     for i in x:
@@ -13,6 +13,8 @@ def main():
         tr_text = test.translating(text)
         test.writing('translation.docx', text, tr_text)
         print("wr")
+        if k == 10:
+            return
 
 
 if __name__ == '__main__':

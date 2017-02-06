@@ -1,6 +1,7 @@
 import requests
 import json
 import csv
+import re
 from docx import Document
 # coding: utf8
 
@@ -38,10 +39,11 @@ class translator(object):
 
     def translating(self, text):
 
-        splited_text = text.split('\n')
+        splited_text = re.split(r'[?!\.]', text)
+
         translated = ""
         for i in splited_text:
-            if len(i) > 2000:
+            if len(i) > 10000:
                 return translated
             translation = requests.post(self.url,
                                         data={'key': self.key,
@@ -50,5 +52,5 @@ class translator(object):
                                         )
 
             jtr = json.loads(translation.text)
-            translated += jtr['text'][0] + "\n"
+            translated += jtr['text'][0] + " "
         return translated
