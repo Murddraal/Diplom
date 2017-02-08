@@ -23,19 +23,31 @@ class translator(object):
                     str_row += cell
                 yield str_row
 
-    def writing(self, file_name, orig_text, trans_text):
+    def writing(self, orig_text, trans_text):
         try:
-            document = Document(file_name)
+            tr_document = Document('translation.docx')
         except:
-            document = Document()
+            tr_document = Document()
+        try:
+            orig_document = Document('original.docx')
+        except:
+            orig_document = Document()
 
-        run = document.add_paragraph().add_run()
+        run = tr_document.add_paragraph().add_run()
         font = run.font
         font.name, font.size = 'Times New Roman', Pt(6)
-        table = document.add_table(rows=1, cols=2)
+        table = tr_document.add_table(rows=1, cols=1)
         row = table.rows[0]
-        row.cells[0].text, row.cells[1].text = orig_text, trans_text
-        document.save(file_name)
+        row.cells[0].text = trans_text
+        tr_document.save('translation.docx')
+
+        run = orig_document.add_paragraph().add_run()
+        font = run.font
+        font.name, font.size = 'Times New Roman', Pt(6)
+        table = orig_document.add_table(rows=1, cols=1)
+        row = table.rows[0]
+        row.cells[0].text = orig_text
+        orig_document.save('original.docx')
 
     def text_parsing(self, json_row):
         mail = json.loads(json_row)
@@ -50,7 +62,7 @@ class translator(object):
         for i in splited_text:
             if len(i) > self.max_text_size:
                 return translated
-            if len(re.findall(r'[^\s?1\n]', i)) == 0:
+            if len(re.findall(r'[^\s?1\w\n]', i)) == 0:
                 continue
             translation = requests.post(self.url,
                                         data={'key': self.key,
