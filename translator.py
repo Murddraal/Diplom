@@ -44,7 +44,7 @@ class translator(object):
 
     def translating(self, text):
 
-        splited_text = re.split(r'[?!\n\.]', text)
+        splited_text = re.split(r'[?!:\n\.]', text)
 
         translated = ""
         for i in splited_text:
