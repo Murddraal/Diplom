@@ -4,15 +4,21 @@ import csv
 import re
 from docx import Document
 from docx.shared import Pt
+from langdetect import detect_langs
+from langdetect import DetectorFactory
+from collections import Counter
 # coding: utf8
 
+# DetectorFactory.seed = 0
 
 class translator(object):
     def __init__(self, lang='en'):
-        self.url = 'https://translate.yandex.net/api/v1.5/tr.json/translate?'
+        self.url_tr = 'https://translate.yandex.net/api/v1.5/tr.json/translate?'
+        self.url_det = 'https://translate.yandex.net/api/v1.5/tr.json/detect? '
         self.key = 'trnsl.1.1.20170127T090047Z.d0549b75a2237806.40d7e9d8902cb56bc4115af8e88c1bf8f0e4cbf3'
         self.lang = lang
         self.max_text_size = 10000
+        self.languages = {}
 
     def csv_reading(self, csv_filename):
         with open(csv_filename, encoding='utf-8') as csvfile:
@@ -64,7 +70,7 @@ class translator(object):
                 return translated
             if len(re.findall(r'[^\s?1\w\n]', i)) == 0:
                 continue
-            translation = requests.post(self.url,
+            translation = requests.post(self.url_tr,
                                         data={'key': self.key,
                                               'text': i,
                                               'lang': self.lang}
@@ -73,3 +79,31 @@ class translator(object):
             jtr = json.loads(translation.text)
             translated += jtr['text'][0] + " ||| "
         return translated
+
+    def lang_detecting(self, text, mod):
+
+        try:
+            lg = detect_langs(text)
+        except:
+            return self.languages
+
+        if mod == 0:
+            list_lg = [str(i).split(':') for i in lg]
+
+            for i in list_lg:
+                try:
+                    self.languages[i[0]] += 1
+                except:
+                    self.languages[i[0]] = 1
+        else:
+            lang = requests.post(self.url_det, data={'key': self.key,
+	                                                'text': text
+                                                     })
+            jtr = json.loads(lang.text)
+            try:
+                self.languages[jtr['lang']] += 1
+            except:
+                self.languages[jtr['lang']] = 1
+
+
+        return self.languages

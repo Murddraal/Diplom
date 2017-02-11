@@ -9,14 +9,17 @@ def main():
     x = test.csv_reading('emails.csv')
     k = 1
     for i in x:
-        print(k)
+        #print(k)
         k += 1
         text = test.text_parsing(i)
-        tr_text = test.translating(text)
-        test.writing(text, tr_text)
-        print("wr")
-        if k == 100:
-            return
+        # tr_text = test.translating(text)
+        # test.writing(text, tr_text)
+        # print("wr")
+        langs = test.lang_detecting(text, 0)
+        if k==120:
+            break
+    print(langs)
+    print(sorted(langs, key=langs.__getitem__))
 
 
 if __name__ == '__main__':
