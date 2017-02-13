@@ -15,7 +15,7 @@ class translator(object):
     def __init__(self, lang='en'):
         self.url_tr = 'https://translate.yandex.net/api/v1.5/tr.json/translate?'
         self.url_det = 'https://translate.yandex.net/api/v1.5/tr.json/detect? '
-        self.key = 'trnsl.1.1.20170127T090047Z.d0549b75a2237806.40d7e9d8902cb56bc4115af8e88c1bf8f0e4cbf3'
+        self.key = 'trnsl.1.1.20161229T092652Z.92eec6478cc791c5.9a428e7546269ce12b04df552805c48a4c63261e'
         self.lang = lang
         self.max_text_size = 10000
         self.languages = {}
