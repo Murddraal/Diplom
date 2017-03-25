@@ -1,17 +1,24 @@
-import requests
-import json
+"""This module translate text, detect languages.
+"""
+
 import csv
+import json
+import operator
 import re
+import requests
 from docx import Document
+from docx.opc import exceptions as doc_exc
 from docx.shared import Pt
 from langdetect import detect_langs
-from langdetect import DetectorFactory
-from collections import Counter
+from langdetect import lang_detect_exception as ld_exc
 # coding: utf8
 
 # DetectorFactory.seed = 0
 
-class translator(object):
+class Translator(object):
+    """This class can translate text via yandex.translate service,
+    detect language via langdetect and yandex translate.
+    """
     def __init__(self, lang='en'):
         self.url_tr = 'https://translate.yandex.net/api/v1.5/tr.json/translate?'
         self.url_det = 'https://translate.yandex.net/api/v1.5/tr.json/detect? '
@@ -20,48 +27,9 @@ class translator(object):
         self.max_text_size = 10000
         self.languages = {}
 
-    def csv_reading(self, csv_filename):
-        with open(csv_filename, encoding='utf-8') as csvfile:
-            reader = csv.reader(csvfile, dialect='excel-tab')
-            for row in reader:
-                str_row = ""
-                for cell in row:
-                    str_row += cell
-                yield str_row
-
-    def writing(self, orig_text, trans_text):
-        try:
-            tr_document = Document('translation.docx')
-        except:
-            tr_document = Document()
-        try:
-            orig_document = Document('original.docx')
-        except:
-            orig_document = Document()
-
-        run = tr_document.add_paragraph().add_run()
-        font = run.font
-        font.name, font.size = 'Times New Roman', Pt(6)
-        table = tr_document.add_table(rows=1, cols=1)
-        row = table.rows[0]
-        row.cells[0].text = trans_text
-        tr_document.save('translation.docx')
-
-        run = orig_document.add_paragraph().add_run()
-        font = run.font
-        font.name, font.size = 'Times New Roman', Pt(6)
-        table = orig_document.add_table(rows=1, cols=1)
-        row = table.rows[0]
-        row.cells[0].text = orig_text
-        orig_document.save('original.docx')
-
-    def text_parsing(self, json_row):
-        mail = json.loads(json_row)
-
-        return mail['bodyText']
-
     def translating(self, text):
-
+        """translate text via yandex.translate
+        """
         splited_text = re.split(r'[?!:\n\.]', text)
 
         translated = ""
@@ -73,18 +41,21 @@ class translator(object):
             translation = requests.post(self.url_tr,
                                         data={'key': self.key,
                                               'text': i,
-                                              'lang': self.lang}
-                                        )
+                                              'lang': self.lang})
 
             jtr = json.loads(translation.text)
             translated += jtr['text'][0] + " ||| "
         return translated
 
-    def lang_detecting(self, text, mod):
-
+    def lang_detecting(self, text, mod=0):
+        """mod = 0 - detect language via langdetect
+        mod = 1 - detect language via yandex.translate
+        """
         try:
             lg = detect_langs(text)
-        except:
+        except TypeError:
+            return self.languages
+        except ld_exc.LangDetectException:
             return self.languages
 
         if mod == 0:
@@ -93,17 +64,63 @@ class translator(object):
             for i in list_lg:
                 try:
                     self.languages[i[0]] += 1
-                except:
+                except KeyError:
                     self.languages[i[0]] = 1
         else:
-            lang = requests.post(self.url_det, data={'key': self.key,
-	                                                'text': text
-                                                     })
+            lang = requests.post(self.url_det,
+                                 data={'key': self.key, 'text': text})
             jtr = json.loads(lang.text)
             try:
                 self.languages[jtr['lang']] += 1
-            except:
+            except KeyError:
                 self.languages[jtr['lang']] = 1
 
-
+        self.languages = sorted(self.languages.items(),
+                                key=operator.itemgetter(1),
+                                reverse=True)
         return self.languages
+
+    def print_langs_list(self, f_name):
+        """print all detected language with it's weight in file
+        """
+        with open(f_name, 'w') as file:
+            for i in self.languages:
+                file.write(str(i[0]) + '-' + str(i[1]) + '\n')
+
+
+def csv_reading(csv_filename):
+    """It's a generator.
+    Get path to the .csv file and return it's content line by line
+    """
+
+    with open(csv_filename, encoding='utf-8') as csvfile:
+        reader = csv.reader(csvfile, dialect='excel-tab')
+        for row in reader:
+            str_row = ""
+            for cell in row:
+                str_row += cell
+            yield str_row
+
+def writing(f_name, text):
+    """Write original and translated texts in the
+    'original'
+    """
+    try:
+        document = Document(f_name)
+    except doc_exc.PackageNotFoundError:
+        document = Document()
+
+    run = document.add_paragraph().add_run()
+    font = run.font
+    font.name, font.size = 'Times New Roman', Pt(6)
+    table = document.add_table(rows=1, cols=1)
+    row = table.rows[0]
+    row.cells[0].text = text
+    document.save(f_name)
+
+def text_parsing(json_row):
+    """Parsing text from json. The text takes from 'bodyText'
+    """
+    mail = json.loads(json_row)
+
+    return mail['bodyText']
