@@ -1,6 +1,8 @@
 """contains class wich work with wordcloud
 """
 
+# -*- coding: utf8 -*-
+
 import operator
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
@@ -31,7 +33,6 @@ class My_wordcloud(object):
         sorted_words.reverse()
         with open(wordsname, 'w') as file:
             for j in sorted_words:
-                file.write(
-                    '{} - {}\n'.format(j[0].encode(encoding='utf-8'), j[1]))
+                file.write(j[0] + ' - ' + str(j[1]) + '\n')
 
         return True

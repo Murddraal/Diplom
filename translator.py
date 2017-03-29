@@ -15,10 +15,12 @@ from langdetect import lang_detect_exception as ld_exc
 
 # DetectorFactory.seed = 0
 
+
 class Translator(object):
     """This class can translate text via yandex.translate service,
     detect language via langdetect and yandex translate.
     """
+
     def __init__(self, lang='en'):
         self.url_tr = 'https://translate.yandex.net/api/v1.5/tr.json/translate?'
         self.url_det = 'https://translate.yandex.net/api/v1.5/tr.json/detect? '
@@ -30,13 +32,14 @@ class Translator(object):
     def translating(self, text):
         """translate text via yandex.translate
         """
+        text = u"私はバーの後ろに座って、en brut de prison. 포로 영양 젊은 독수리."
         splited_text = re.split(r'[?!:\n\.]', text)
 
         translated = ""
         for i in splited_text:
             if len(i) > self.max_text_size:
                 return translated
-            if len(re.findall(r'[^\s?1\w\n]', i)) == 0:
+            if len(re.findall(u'[\W', i)) == 0:
                 continue
             translation = requests.post(self.url_tr,
                                         data={'key': self.key,
@@ -54,9 +57,9 @@ class Translator(object):
         try:
             lg = detect_langs(text)
         except TypeError:
-            return self.languages
+            return {}
         except ld_exc.LangDetectException:
-            return self.languages
+            return {}
 
         if mod == 0:
             list_lg = [str(i).split(':') for i in lg]
@@ -75,16 +78,16 @@ class Translator(object):
             except KeyError:
                 self.languages[jtr['lang']] = 1
 
-        self.languages = sorted(self.languages.items(),
-                                key=operator.itemgetter(1),
-                                reverse=True)
-        return self.languages
+        return lg
 
     def print_langs_list(self, f_name):
         """print all detected language with it's weight in file
         """
+        sorted_langs = self.languages = sorted(self.languages.items(),
+                                               key=operator.itemgetter(1),
+                                               reverse=True)
         with open(f_name, 'w') as file:
-            for i in self.languages:
+            for i in sorted_langs:
                 file.write(str(i[0]) + '-' + str(i[1]) + '\n')
 
 
@@ -100,6 +103,7 @@ def csv_reading(csv_filename):
             for cell in row:
                 str_row += cell
             yield str_row
+
 
 def writing(f_name, text):
     """Write original and translated texts in the
@@ -117,6 +121,7 @@ def writing(f_name, text):
     row = table.rows[0]
     row.cells[0].text = text
     document.save(f_name)
+
 
 def text_parsing(json_row):
     """Parsing text from json. The text takes from 'bodyText'
