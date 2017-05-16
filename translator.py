@@ -1,6 +1,6 @@
 """This module translate text, detect languages.
 """
-
+import sys
 import csv
 import json
 import operator
@@ -10,6 +10,7 @@ from docx import Document
 from docx.opc import exceptions as doc_exc
 from docx.shared import Pt
 from langdetect import detect_langs
+from langdetect import detect
 from langdetect import lang_detect_exception as ld_exc
 # coding: utf8
 
@@ -32,14 +33,13 @@ class Translator(object):
     def translating(self, text):
         """translate text via yandex.translate
         """
-        text = u"私はバーの後ろに座って、en brut de prison. 포로 영양 젊은 독수리."
         splited_text = re.split(r'[?!:\n\.]', text)
 
         translated = ""
         for i in splited_text:
             if len(i) > self.max_text_size:
                 return translated
-            if len(re.findall(u'[\W', i)) == 0:
+            if len(re.findall(r'[^\s?1\w\n]', i)) == 0:
                 continue
             translation = requests.post(self.url_tr,
                                         data={'key': self.key,
@@ -50,44 +50,30 @@ class Translator(object):
             translated += jtr['text'][0] + " ||| "
         return translated
 
-    def lang_detecting(self, text, mod=0):
-        """mod = 0 - detect language via langdetect
-        mod = 1 - detect language via yandex.translate
+    def lang_detecting(self, text):
+        """detect language via langdetect
         """
+
         try:
             lg = detect_langs(text)
         except TypeError:
-            return {}
+            return
         except ld_exc.LangDetectException:
-            return {}
+            return
 
-        if mod == 0:
-            list_lg = [str(i).split(':') for i in lg]
+        list_lg = [str(i).split(':') for i in lg]
 
-            for i in list_lg:
-                try:
-                    self.languages[i[0]] += 1
-                except KeyError:
-                    self.languages[i[0]] = 1
-        else:
-            lang = requests.post(self.url_det,
-                                 data={'key': self.key, 'text': text})
-            jtr = json.loads(lang.text)
+        for i in list_lg:
             try:
-                self.languages[jtr['lang']] += 1
+                self.languages[i[0]] += 1
             except KeyError:
-                self.languages[jtr['lang']] = 1
-
-        return lg
+                self.languages[i[0]] = 1
 
     def print_langs_list(self, f_name):
         """print all detected language with it's weight in file
         """
-        sorted_langs = self.languages = sorted(self.languages.items(),
-                                               key=operator.itemgetter(1),
-                                               reverse=True)
         with open(f_name, 'w') as file:
-            for i in sorted_langs:
+            for i in self.languages:
                 file.write(str(i[0]) + '-' + str(i[1]) + '\n')
 
 
@@ -106,26 +92,39 @@ def csv_reading(csv_filename):
 
 
 def writing(f_name, text):
-    """Write original and translated texts in the
-    'original'
+    """Write text in file
     """
-    try:
-        document = Document(f_name)
-    except doc_exc.PackageNotFoundError:
-        document = Document()
+    if f_name.endswith(".doc"):
+        try:
+            document = Document(f_name)
+        except doc_exc.PackageNotFoundError:
+            document = Document()
 
-    run = document.add_paragraph().add_run()
-    font = run.font
-    font.name, font.size = 'Times New Roman', Pt(6)
-    table = document.add_table(rows=1, cols=1)
-    row = table.rows[0]
-    row.cells[0].text = text
-    document.save(f_name)
+        run = document.add_paragraph().add_run()
+        font = run.font
+        font.name, font.size = 'Times New Roman', Pt(6)
+        table = document.add_table(rows=1, cols=1)
+        row = table.rows[0]
+        row.cells[0].text = text
+        document.save(f_name)
+
+    elif f_name.endswith(".txt"):
+        with open(f_name, 'w') as file:
+            file.write(text)
+
+def writing_langs(f_name, langs):
+    with open(f_name, 'w') as file:
+        for l in langs:
+            file.write("{} - {}\n".format(l[0], l[1]))
 
 
-def text_parsing(json_row):
-    """Parsing text from json. The text takes from 'bodyText'
+def text_parsing_json(json_row, attr):
+    """Parsing text from json. The text takes from attribute attr
     """
     mail = json.loads(json_row)
-
-    return mail['bodyText']
+    try:
+        value = mail[attr]
+    except ValueError:
+        print("There is no attr like that")
+        exit(-1)
+    return value
