@@ -83,7 +83,8 @@ def main():
     vectorizer = StemmedTfidfVectorizer(
         min_df=10, max_df=0.5, stop_words=stop_words, decode_error='ignore')
     vectorized = vectorizer.fit_transform(latters)
-    vectors = [x for x in vectorized if len(x.data) != 0]
+    #vectors = [x for x in vectorized if len(x.data) != 0]
+    vectors = [x for x in vectorized]
 
     num_samples, num_features = vectorized.shape
     print("samples: {}\nfeatures: {}".format(num_samples, num_features))
@@ -93,7 +94,7 @@ def main():
         for term in terms:
             f.write("{}\n".format(term))
 
-    num_clusters = 2
+    num_clusters = 5
     from sklearn.cluster import KMeans
     km = KMeans(n_clusters=num_clusters, init='random',
                 n_init=10, verbose=1, n_jobs=1)
@@ -105,16 +106,22 @@ def main():
 
     print("Time: {}".format(total_time))
 
-    draw_result(vectorized, num_clusters, km.labels_)
+    #draw_result(vectorized, num_clusters, km.labels_)
 
     centers = [x for x in km.cluster_centers_]
 
     nearest_latter = []
 
     all = [(x, y, z, k, len(z.data))
-           for x, y, z, k in zip(ordered_files, latters, vectors, km.labels_)]
+           for x, y, z, k in zip(ordered_files, latters, vectors, km.labels_) if len(z.data) != 0] 
     empty_vect = all[0][2]
     non_empty_vect = all[1][2]
+
+    with open('vectors.txt', 'w') as f:
+        for vec in vectors:
+            for x in vec.data:
+                f.write("{} ".format(x))
+            f.write("\n\n")
 
     cluster_index = 0
 
