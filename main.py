@@ -5,6 +5,7 @@ import operator
 import getopt
 import time
 import translator as tr
+import re
 from my_wordcloud import My_wordcloud as mwc
 
 # coding: utf8
@@ -17,15 +18,19 @@ def translating(filename, json_attr="", lang='en'):
     if filename == 'emails.csv':
         csv = tr.csv_reading(filename)
 
-        k = 1
+        k = 0
         for i in csv:
+            k += 1            
             text = tr.text_parsing_json(i, json_attr)
+            text = tr.mail_process(text)
+            answ = re.findall('>+', text)
+            if len(answ) != 0:
+                continue
             if text == "":
                 continue
             transl_text = transl.translating(text)
 
             tr.writing('./latters/transl_latter' + str(k) + '.txt', transl_text)
-            k += 1
 
 
 def detecting(filename, json_attr):
@@ -134,8 +139,7 @@ def main():
 
     if "--time" in all_opts:
         total_time = time.time() - start_time
-
-    print("Time: {}".format(total_time))
+        print("Time: {}".format(total_time))
 
 
 if __name__ == '__main__':

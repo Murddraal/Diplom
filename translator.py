@@ -128,3 +128,14 @@ def text_parsing_json(json_row, attr):
         print("There is no attr like that")
         exit(-1)
     return value
+
+def mail_process(text):
+
+    text = re.sub(r'\S+@\S+', '', text)
+    text = re.sub(r'\.\S+/\S+', '', text)
+    text = re.sub(r'\S+\.\S+\.\S+', '', text)
+    text = re.sub(r'http\S+', '', text)
+    text = re.sub(r'[^a-zA-Z0-9_\s]', '', text)
+
+
+    return text
