@@ -10,6 +10,11 @@ import re
 import shutil
 import nltk.stem
 import numpy
+from gensim import corpora, models
+from collections import defaultdict
+import matplotlib.pyplot as plt
+import datetime
+
 
 # coding: utf8
 
@@ -43,18 +48,7 @@ def find_topics_count(topics):
 
     return len(for_del)
 
-
-def main():
-
-    start_time = time.time()
-    DIR = "./letters/translated"
-    ordered_files = sorted(os.listdir(
-        DIR), key=lambda x: int(re.search(r'\d+', x).group()))
-
-    letters = [open(os.path.join(DIR, f)).read() for f in ordered_files]
-    r = re.compile(r'\d')
-    letters = [r.sub('', x) for x in letters]
-
+def processing_texts(letters):
     stoplist = []
     with open('stopwords.txt', 'r') as f:
         stoplist = f.read().split(',')
@@ -63,34 +57,67 @@ def main():
     proc_letters = [[word for word in latter.lower().split() if word not in stoplist]
                     for latter in proc_letters]
 
-    from gensim import corpora, models
-
-    from collections import defaultdict
+    
     frequency = defaultdict(int)
     for latter in proc_letters:
         for token in latter:
             frequency[token] += 1
 
-    proc_letters = [[token for token in text if frequency[token] > 10 and frequency[token] < len(frequency) * 0.5]
-                    for text in proc_letters]
+    # proc_letters = [[token for token in text if frequency[token] > 3 and frequency[token] < len(frequency) * 0.7]
+    #                 for text in proc_letters]
+    
+    return proc_letters
 
-    dictionary = corpora.Dictionary(proc_letters)
+def read_letters():
+    DIR = "./letters/translated"
+    ordered_files = sorted(os.listdir(
+        DIR), key=lambda x: int(re.search(r'\d+', x).group()))
+
+    letters = [open(os.path.join(DIR, f)).read() for f in ordered_files]
+    r = re.compile(r'\d')
+    letters = [r.sub('', x) for x in letters]
+
+    return letters, ordered_files 
+
+def read_forum():
+    csv = tr.csv_reading('forum_post.csv', False, None)
+    users_text = {}
+    for i in csv:
+        try:
+            users_text[i[4]].append([i[1], i[3]])
+        except:
+            users_text[i[4]] = [[i[1], i[3]]]
+        
+    return users_text
+
+def modeling(texts, mode='lda', num_words=10, num_topics=20, alpha='symmetric', dates=None, user=None):
+    dictionary = corpora.Dictionary(texts)
     dictionary.save('./tmp/letters.dict')
     id2word = dictionary
 
-    corpus = [id2word.doc2bow(text) for text in proc_letters]
+    corpus = [id2word.doc2bow(text) for text in texts]
     corpora.MmCorpus.serialize('./tmp/corpus.mm', corpus)
     corpus = corpora.MmCorpus('./tmp/corpus.mm')
 
-    model = models.hdpmodel.HdpModel(
-        corpus=corpus,
-        id2word=id2word)
+    try:
+        if mode == 'lda':
+            model = models.ldamodel.LdaModel(
+                corpus=corpus,
+                id2word=id2word,
+                num_topics=num_topics,
+                alpha=alpha)
+        elif mode == 'hdp':
+            model = models.hdpmodel.HdpModel(
+                corpus=corpus,
+                id2word=id2word)
+    except:
+        return
+    all_topics = model.show_topics(-1, num_words=num_words)
 
-    all_topics = model.show_topics(-1, num_words=10)
 
     all_topics = sorted(all_topics, key=lambda x: x[0])
 
-    find_topics_count(all_topics)
+    #find_topics_count(all_topics)
 
     # print(all_topics)
 
@@ -99,23 +126,108 @@ def main():
 
     tfidf = models.TfidfModel(corpus)
 
-    with open('latter-topics.txt', 'w') as f:
-        for x in zip(ordered_files, range(0, len(corpus))):
-            f.write('{}: {}\n'.format(x[0], model[corpus[x[1]]]))
+    # with open('latter-topics.txt', 'w') as f:
+    #     for x in zip(ordered_files, range(0, len(corpus))):
+    #         f.write('{}: {}\n'.format(x[0], model[corpus[x[1]]]))
 
-    with open('topics.txt', 'w') as f:
-        for top in all_topics:
-            f.write('{}\n'.format(top))
+    # with open('topics.txt', 'w') as f:
+    #     for top in all_topics:
+    #         f.write('{}\n'.format(top))
 
     # topics = model[doc]
     # topics = [model[corpus[x]] for x in range(0, len(corpus))]
 
     # for x in topics:
     #     print(x)
-    import matplotlib.pyplot as plt
-    num_topics_used = [len(model[doc]) for doc in corpus]
-    plt.hist(num_topics_used)
+    if dates == None:
+        return all_topics, [model[x] for x in corpus]
+        # num_topics_used = [len(model[doc]) for doc in corpus]
+        # plt.hist(num_topics_used)
+        #x = [i for i in range(1, len(dates) + 1)]
+        #plt.xticks(x, dates, rotation='vertical')
+        #plt.show()
+    else:
+        num_topics_used = [len(model[corpus[x]]) for x in range(len(corpus))]
+        #plt.hist(num_topics_used)
+        fig = plt.figure()
+        x = [i for i in range(1, len(dates) + 1)]
+        plt.plot(x, num_topics_used)
+        plt.xticks(x, dates, rotation='vertical')
+        url = 'users topics/user_{}.png'.format(user)
+        try:
+            plt.savefig(url)
+        except:
+            return
+        #plt.show()
+
+def popular_between_dates(forum, date_from, date_to):
+    texts = []
+    for user in forum:
+        for text in forum[user]:
+            d = text[0].split()
+            d = d[0].split('-')
+            try:
+                user_date = datetime.datetime(int(d[0]), int(d[1]), int(d[2]))
+            except ValueError:
+                continue
+            if date_from <= user_date <= date_to:
+                texts.append(text[1])
+    proces_text = processing_texts(texts)
+
+    all_topics, topics = modeling(proces_text, 'lda', num_topics=100, num_words=5)
+    pops = [[x, 0] for x in range(len(all_topics))]
+    for x in topics:
+        for i in x:
+            pops[i[0]][1] += 1
+    pops = sorted(pops, key=lambda x: x[1], reverse=True)
+    sizes = pops[:10]
+    labels = [all_topics[x[0]][1] for x in sizes]
+
+    fig1, ax1 = plt.subplots()
+    ax1.pie([x[1] for x in sizes], labels=labels, autopct='%1.1f%%',
+            shadow=True, startangle=90)
+    ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+
+    for x in labels:
+        print("{}\n".format(x))
     plt.show()
+
+
+def users_topics(forum):
+    for user in forum:
+        texts = []
+        dates = []
+        for text in forum[user]:
+            d = text[0].split()
+            try:
+                find = dates.index(d[0])
+            except ValueError:
+                find = -1
+            if find == -1:
+                dates.append(d[0])
+                texts.append(text[1])
+            else:
+                texts[find]+=" {}".format(text[1])
+
+        if len(dates) < 3:
+            continue
+        proc_texts = processing_texts(texts)
+        modeling(proc_texts, mode='hdp', alpha=1, dates=dates, user=user)
+
+def main():    
+    start_time = time.time()
+
+    texts, ordered_files = read_letters()
+
+    forum = read_forum()
+    listmerge=lambda ll: [el for lst in ll for el in lst]
+
+    #users_topics(forum)
+
+    popular_between_dates(forum,
+                          datetime.datetime(2016, 12, 31),
+                          datetime.datetime(2017, 1, 2))
+
 
 
 if __name__ == '__main__':

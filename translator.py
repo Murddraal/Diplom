@@ -77,18 +77,23 @@ class Translator(object):
                 file.write(str(i[0]) + '-' + str(i[1]) + '\n')
 
 
-def csv_reading(csv_filename):
+def csv_reading(csv_filename, in_one_row=True, dialect='excel-tab'):
     """It's a generator.
     Get path to the .csv file and return it's content line by line
     """
 
     with open(csv_filename, encoding='utf-8') as csvfile:
-        reader = csv.reader(csvfile, dialect='excel-tab')
+        reader = csv.reader(csvfile
+                            ,dialect=dialect
+                            )
         for row in reader:
             str_row = ""
-            for cell in row:
-                str_row += cell
-            yield str_row
+            if in_one_row:
+                for cell in row:
+                    str_row += cell
+                yield str_row
+            else:
+                yield row
 
 
 def writing(f_name, text):
