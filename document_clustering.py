@@ -82,7 +82,7 @@ def vectorizing(opts, dataset):
        
         if opts.use_idf:
             # Perform an IDF normalization on the output of HashingVectorizer
-            hasher = HashingVectorizer(n_features=opts.n_features,
+            hasher = HashingVectorizer(#n_features=opts.n_features,
                                     stop_words='english', non_negative=True,
                                     norm=None, binary=False)
             vectorizer = make_pipeline(hasher, TfidfTransformer())
@@ -170,14 +170,14 @@ def clustering(opts, true_k, X, init='k-means++'):
         km = MiniBatchKMeans(n_clusters=true_k, init=init, n_init=1,
                             init_size=1000, batch_size=1000, verbose=opts.verbose)
     else:
-        # from sklearn.cluster import k_means_
-        # from sklearn.metrics.pairwise import cosine_distances, cosine_similarity
-        # def new_euclidean_distances(X, Y=None, Y_norm_squared=None, squared=False):
-        #     return cosine_similarity(X, Y)
+        from sklearn.cluster import k_means_
+        from sklearn.metrics.pairwise import cosine_distances, cosine_similarity
+        def new_euclidean_distances(X, Y=None, Y_norm_squared=None, squared=False):
+            return cosine_distances(X, Y)
 
-        # # monkey patch (ensure cosine dist function is used)
+        # monkey patch (ensure cosine dist function is used)
 
-        # k_means_.euclidean_distances = new_euclidean_distances
+        k_means_.euclidean_distances = new_euclidean_distances
         km = KMeans(n_clusters=true_k, init=init, max_iter=100, n_init=1,
                     verbose=opts.verbose, n_jobs=-1)
 
@@ -199,7 +199,8 @@ def main():
     perc = 0
     t0 = time()
 
-    for i in range(opts.iterations):
+    #for i in range(opts.iterations):
+    for ii in range(2,21):
         t1 = time()
         ###############################################################################
         # Load some categories from the training set
@@ -214,30 +215,16 @@ def main():
 
         # print("Loading 20 newsgroups dataset for categories:")
         # print(categories)
-############Training##############################
-        dataset_train = fetch_20newsgroups(subset='train', categories=categories,
-                                    shuffle=True)
 
-        # print("%d documents" % len(dataset.data))
-        # print("%d categories" % len(dataset.target_names))
-        # print()
-
-        labels_train = dataset_train.target
-        true_k = np.unique(labels_train).shape[0]
-
-        #print("Extracting features from the training dataset using a sparse vectorizer")
-        X_train, vectorizer, svd = vectorizing(opts, dataset_train)
-
-        km_train = clustering(opts, true_k, X_train)
 ############Testing##############################
         dataset = fetch_20newsgroups(subset='test', categories=categories,
                                     shuffle=True)
         labels = dataset.target
         true_k = np.unique(labels).shape[0]
         X, vectorizer, svd = vectorizing(opts, dataset)
-        km = clustering(opts, true_k, X, km_train.cluster_centers_)
+        km = clustering(opts, ii, X)
         
-        print("% done in %0.3fs" % (i, time() - t1))
+        #print("% done in %0.3fs" % (i, time() - t1))
 
         perc_loc = 0
         for i in zip(labels, km.labels_):
@@ -269,19 +256,21 @@ def main():
         aver_metr[3] += metrics.adjusted_rand_score(labels, km.labels_)
         aver_metr[4] += metrics.silhouette_score(X, km.labels_, sample_size=1000)
 
+        mk = metrics.calinski_harabaz_score(X, km.labels_)
+        print("{} {}".format(ii, mk))
+
 
     aver_metr = [x / opts.iterations for x in aver_metr]
-    perc /= opts.iterations
 
-    print("Homogeneity: %0.3f" % aver_metr[0])
-    print("Completeness: %0.3f" % aver_metr[1])
-    print("V-measure: %0.3f" % aver_metr[2])
-    print("Adjusted Rand-Index: %.3f" % aver_metr[3])
-    print("Silhouette Coefficient: %0.3f" % aver_metr[4])
-    print("PErception: {}".format(perc))
+    # with open('measure_with_diff_lsa.txt', 'w') as f:
+    #     f.write("Homogeneity: %0.3f" % aver_metr[0])
+    #     f.write("Completeness: %0.3f" % aver_metr[1])
+    #     f.write("V-measure: %0.3f" % aver_metr[2])
 
-    print()
-    print("done in %0.3fs" % (time() - t0))
+    mk = metrics.calinski_harabaz_score(X, km.labels_)
+    print(mk)
+    # print()
+    # print("done in %0.3fs" % (time() - t0))
 
 if __name__ == '__main__':
     main()

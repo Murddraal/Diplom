@@ -10,6 +10,29 @@ from my_wordcloud import My_wordcloud as mwc
 
 # coding: utf8
 
+def parsing_arguments():
+    # parse commandline arguments
+    op = OptionParser()
+    op.add_option("--clusterisation",
+                action="clustering", type="str")
+
+    op.add_option("--topic_modeling",
+                dest="n_components", type="str",
+                help="Preprocess documents with latent semantic analysis.")
+    op.add_option("--doc_prepocessing",
+                action="store_false", type="str", default=True,
+                help="Use ordinary k-means algorithm (in batch mode).")
+    
+
+    (opts, args) = op.parse_args()
+    if len(args) > 0:
+        op.error("this script takes no arguments.")
+        sys.exit(1)
+
+    return opts
+
+
+
 
 def translating(filename, json_attr="", lang='en'):
 
@@ -81,14 +104,7 @@ def translate_then_cloud(filename, json_attr, lang):
 
 def main():
 
-    try:
-        opts, args = getopt.getopt(sys.argv[1:],
-                                   "T:tdcf:a:",
-                                   ["translate=", "detect", "cloud", "file=", "t_c=", "attr=", "time", "json"])
-    except getopt.GetoptError as err:
-        # print help information and exit:
-        print(err)  # will print something like "option -a not recognized"
-        sys.exit(2)
+   opts = parsing_arguments()
 
     filename = ""
     start_time = 0

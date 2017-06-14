@@ -17,16 +17,18 @@ from sklearn.cluster import k_means_
 from sklearn.metrics.pairwise import cosine_distances, cosine_similarity
 from random import randint
 from sklearn.feature_extraction.text import CountVectorizer
+import codecs
+import LDA
+from sklearn.preprocessing import Normalizer
+from sklearn.decomposition import TruncatedSVD
+from sklearn.pipeline import make_pipeline
+
 
 
 # coding: utf8
 
 
 def draw_result(groups, clusters):
-
-    # from sklearn.decomposition import TruncatedSVD as TSVD
-    # tsvd = TSVD(n_components=2, algorithm="randomized").fit(vectorized)
-    # tsvd_2d = tsvd.transform(vectorized)
 
     import pylab as pl
     import matplotlib.pyplot as plt
@@ -74,7 +76,7 @@ def writing_in_clusters(ordered_files, letters, labels_):
             f.write(letter)
 
 
-def clusterisation(data, clust_numb):
+def clusterisation(data, clust_numb, n_components=None):
     english_stemmer = nltk.stem.SnowballStemmer('english')
 
     class StemmedTfidfVectorizer(TfidfVectorizer):
@@ -90,33 +92,41 @@ def clusterisation(data, clust_numb):
     vectorizer = StemmedTfidfVectorizer(
         min_df=2, max_df=0.5, stop_words=stop_words, decode_error='ignore')
 
-    # vectorizer = TfidfVectorizer(min_df=1)
     vectorized = vectorizer.fit_transform(data)
+
+    if n_components:
+        svd = TruncatedSVD(n_components)
+        normalizer = Normalizer(copy=False)
+        lsa = make_pipeline(svd, normalizer)
+
+        vectorized = lsa.fit_transform(vectorized)
+        explained_variance = svd.explained_variance_ratio_.sum()
+
 
     # def new_euclidean_distances(X, Y=None, Y_norm_squared=None, squared=False):
     #     return cosine_similarity(X, Y)
 
-    # # monkey patch (ensure cosine dist function is used)
+    # monkey patch (ensure cosine dist function is used)
 
-    # k_means_.euclidean_distances = new_euclidean_distances
+    #k_means_.euclidean_distances = new_euclidean_distances
 
     km = KMeans(n_clusters=clust_numb, init='k-means++',
-                n_init=1, n_jobs=-1)
+                n_init=1, n_jobs=1)
     km.fit(vectorized)
 
-    print("Top terms per cluster:")
+    # print("Top terms per cluster:")
 
-    order_centroids = km.cluster_centers_.argsort()[:, ::-1]
+    # order_centroids = km.cluster_centers_.argsort()[:, ::-1]
 
     terms = vectorizer.get_feature_names()
-    for i in range(clust_numb):
-        print("Cluster %d:" % i, end='')
-        for ind in order_centroids[i, :10]:
-            print(' %s' % terms[ind], end='')
-        print()
-    print("{}".format([len([x for x in km.labels_ if x == k]) for k in range(clust_numb)]))
+    # for i in range(clust_numb):
+    #     print("Cluster %d:" % i, end='')
+    #     for ind in order_centroids[i, :10]:
+    #         print(' %s' % terms[ind], end='')
+    #     print()
+    #print("{}".format([len([x for x in km.labels_ if x == k]) for k in range(clust_numb)]))
 
-    return km
+    return vectorized,  km
 
 
 def clust_test(clust_numb, files, iterations):
@@ -129,7 +139,7 @@ def clust_test(clust_numb, files, iterations):
 
     data = listmerge(data)
 
-    train_km = clusterisation(data, clust_numb)
+    v, train_km = clusterisation(data, clust_numb)
 
     clust_sizes = [len([x for x in train_km.labels_ if x == k])
                    for k in range(clust_numb)]
@@ -161,63 +171,51 @@ def clust_test(clust_numb, files, iterations):
 def main():
 
     start_time = time.time()
-    # DIR = "./letters/translated"
-    # ordered_files = sorted(os.listdir(
-    #     DIR), key=lambda x: int(re.search(r'\d+', x).group()))
+    DIR = "./letters/translated"
+    ordered_files = sorted(os.listdir(
+        DIR), key=lambda x: int(re.search(r'\d+', x).group()))
 
-    # letters = [open(os.path.join(DIR, f)).read() for f in ordered_files]
-    # r = re.compile(r'\d')
-    # letters = [r.sub('', x) for x in letters]
+    letters = [open(os.path.join(DIR, f)).read() for f in ordered_files]
+    r = re.compile(r'\d')
+    letters = [r.sub('', x) for x in letters]
 
-    folders = os.listdir('./20news-bydate/20news-bydate-test/')
-    folders = folders[:10]
+    # folders = os.listdir('./20news-bydate/20news-bydate-test/')
+    # folders = folders[:10]
 
-    ordered_files = []
-    for folder in folders:
-        test_dir = './20news-bydate/20news-bydate-test/{}/'.format(folder)
-        train_dir = './20news-bydate/20news-bydate-train/{}/'.format(folder)
+    # ordered_files = []
+    # for folder in folders:
+    #     test_dir = './20news-bydate/20news-bydate-test/{}/'.format(folder)
+    #     train_dir = './20news-bydate/20news-bydate-train/{}/'.format(folder)
 
-        for DIR in [test_dir, train_dir]:
-            files = os.listdir(DIR)
-            group_list = []
-            for f_name in files:
-                with open(DIR + f_name, 'rb') as f:
-                    group_list.append((f_name, f.read()))
-        ordered_files.append(group_list)
+    #     for DIR in [test_dir, train_dir]:
+    #         files = os.listdir(DIR)
+    #         group_list = []
+    #         for f_name in files:
+    #             with codecs.open(DIR + f_name, "r",encoding='utf-8', errors='ignore') as f:
+    #                 ordered_files.append(f.read())
+        #ordered_files.append(group_list)
 
-    # english_stemmer = nltk.stem.SnowballStemmer('english')
-    # from sklearn.feature_extraction.text import TfidfVectorizer
-
-    # class StemmedTfidfVectorizer(TfidfVectorizer):
-    #     def build_analyzer(self):
-    #         analyzer = super().build_analyzer()
-    #         return lambda doc: (
-    #             english_stemmer.stem(w) for w in analyzer(doc)
-    #         )
-
-    # from sklearn.feature_extraction import text
-
-    # stop_words = text.ENGLISH_STOP_WORDS.union(
-    #     [x for x in open("stopwords.txt", 'r').read().split(',')])
-
-    # vectorizer = StemmedTfidfVectorizer(
-    #     min_df=10, max_df=0.5, stop_words=stop_words, decode_error='ignore')
-
-    # vectorized = vectorizer.fit_transform([x[1] for x in ordered_files])
-    # #vectors = [x for x in vectorized if len(x.data) != 0]
-    # vectors = [x for x in vectorized]
-
-    # num_samples, num_features = vectorized.shape
-    # print("samples: {}\nfeatures: {}".format(num_samples, num_features))
-    # terms = vectorizer.get_feature_names()
 
     # with open("features_list.txt", 'w') as f:
     #     for term in terms:
     #         f.write("{}\n".format(term))
 
-    num_clusters = len(folders)
+    #num_clusters = len(folders)
+    from sklearn import metrics
 
-    groups, clusters = clust_test(num_clusters, ordered_files, 4)
+    mks = [0 for x in range(9)]
+
+    for j in range(1):
+        for i in range(2, 11): 
+            X, km = clusterisation(letters, i)
+            mks[i-2] += metrics.calinski_harabaz_score(X.toarray(), km.labels_)
+            
+    
+    #mks = [x/10 for x in mks]
+    for i in mks:
+        print("{}".format(i))
+
+    #groups, clusters = clust_test(num_clusters, ordered_files, 4)
     #draw_result(groups, clusters)
     # from sklearn.cluster import KMeans
 
