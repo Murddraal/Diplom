@@ -93,9 +93,21 @@ def read_letters():
     return letters, ordered_files 
 
 def read_forum():
-    csv = tr.csv_reading('forum_post.csv', False, None)
+    import files
+    csv = files.csv_reading('./forum-data-fixed/forum_post.csv', False, None)
+    wrong_id =['91', '92', '144', '93', '129']
+    wrong_topics = []
+    topics_csv = files.csv_reading('./forum-data-fixed/forum_topic.csv', False, None)
+    for i in topics_csv:
+        if i[4] in wrong_id:
+            wrong_topics.append(i[2])
+
+    users_text = {}
+    data = []
     users_text = {}
     for i in csv:
+        if i[2] in wrong_topics:
+            continue
         try:
             users_text[i[4]].append([i[1], i[3]])
         except:

@@ -6,15 +6,28 @@
 import operator
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
+import nltk
 
+def is_int(s):
+    try:
+        int(s)
+        return True
+    except ValueError:
+        return False
 
 class My_wordcloud(object):
-    def gen_cloud(self, picname, wordsname, text, if_sw=False):
+    def gen_cloud(self, picname, wordsname, text, sw=None):
         stopwords = ""
-        if if_sw:
-            with open("stopwords.txt", "r") as file:
+        if sw:
+            with open(sw, "r") as file:
                 stopwords = file.read()
             stopwords = stopwords.split(",")
+        
+        english_stemmer = nltk.stem.SnowballStemmer('english')
+
+        text = [english_stemmer.stem(word) for word in text.lower().split() if word not in stopwords and is_int(word) == False ]
+        
+        text = " ".join(text)
 
         try:
             wordcloud = WordCloud(max_words=1000, max_font_size=40,
@@ -26,6 +39,7 @@ class My_wordcloud(object):
         plt.imshow(wordcloud, interpolation="bilinear")
         plt.axis("off")
         plt.savefig(picname)
+        #plt.show()
         plt.close()
 
         words = wordcloud.words_

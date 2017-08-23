@@ -166,10 +166,31 @@ def clust_test(clust_numb, files, iterations):
     print('{}'.format(clust_sizes))
 
     return train_lenghtes, clust_sizes
+def read_forum():
+    import files
 
+    csv = files.csv_reading('./forum-data-fixed/forum_post.csv', False, None)
+    wrong_id =['91', '92', '144', '93', '129']
+    wrong_topics = []
+    topics_csv = files.csv_reading('./forum-data-fixed/forum_topic.csv', False, None)
+    for i in topics_csv:
+        if i[4] in wrong_id:
+            wrong_topics.append(i[2])
+
+    users_text = {}
+    data = []
+    # for i in csv:
+    #     try:
+    #         users_text[i[4]].append([i[1], i[3]])
+    #     except:
+    #         users_text[i[4]] = [[i[1], i[3]]]
+    for i in csv:
+        if i[2] in wrong_topics:
+            continue
+        data.append(i[3])        
+    return data
 
 def main():
-
     start_time = time.time()
     DIR = "./letters/translated"
     ordered_files = sorted(os.listdir(
@@ -178,6 +199,16 @@ def main():
     letters = [open(os.path.join(DIR, f)).read() for f in ordered_files]
     r = re.compile(r'\d')
     letters = [r.sub('', x) for x in letters]
+
+    forum = read_forum()
+    text = ""
+    for i in forum:
+        text += "{} ".format(i)
+
+    import my_wordcloud as mwc
+
+    wc = mwc.My_wordcloud()
+    wc.gen_cloud('forums_wc.png', 'forum_wc.txt', text, True)
 
     # folders = os.listdir('./20news-bydate/20news-bydate-test/')
     # folders = folders[:10]
@@ -201,78 +232,78 @@ def main():
     #         f.write("{}\n".format(term))
 
     #num_clusters = len(folders)
-    from sklearn import metrics
+    # from sklearn import metrics
 
-    mks = [0 for x in range(9)]
+    # mks = [0 for x in range(9)]
 
-    for j in range(1):
-        for i in range(2, 11): 
-            X, km = clusterisation(letters, i)
-            mks[i-2] += metrics.calinski_harabaz_score(X.toarray(), km.labels_)
+    # for j in range(1):
+    #     for i in range(2, 11): 
+    #         X, km = clusterisation(letters, i)
+    #         mks[i-2] += metrics.calinski_harabaz_score(X.toarray(), km.labels_)
             
     
-    #mks = [x/10 for x in mks]
-    for i in mks:
-        print("{}".format(i))
+    # #mks = [x/10 for x in mks]
+    # for i in mks:
+    #     print("{}".format(i))
 
-    #groups, clusters = clust_test(num_clusters, ordered_files, 4)
-    #draw_result(groups, clusters)
-    # from sklearn.cluster import KMeans
+    # #groups, clusters = clust_test(num_clusters, ordered_files, 4)
+    # #draw_result(groups, clusters)
+    # # from sklearn.cluster import KMeans
 
-    # from sklearn.metrics.pairwise import cosine_distances
-    # def new_euclidean_distances(X, Y=None, Y_norm_squared=None, squared=False):
-    #     return cosine_distances(X,Y)
+    # # from sklearn.metrics.pairwise import cosine_distances
+    # # def new_euclidean_distances(X, Y=None, Y_norm_squared=None, squared=False):
+    # #     return cosine_distances(X,Y)
 
-    # # monkey patch (ensure cosine dist function is used)
-    # from sklearn.cluster import k_means_
+    # # # monkey patch (ensure cosine dist function is used)
+    # # from sklearn.cluster import k_means_
 
-    # k_means_.euclidean_distances = new_euclidean_distances
-    # km = KMeans(n_clusters=num_clusters, init='random',
-    #             n_init=10, n_jobs=-1)
-    # km.fit(vectorized)
+    # # k_means_.euclidean_distances = new_euclidean_distances
+    # # km = KMeans(n_clusters=num_clusters, init='random',
+    # #             n_init=10, n_jobs=-1)
+    # # km.fit(vectorized)
 
-    #writing_in_clusters(ordered_files, letters, km.labels_)
+    # #writing_in_clusters(ordered_files, letters, km.labels_)
 
-    total_time = time.time() - start_time
+    # total_time = time.time() - start_time
 
-    print("Time: {}".format(total_time))
+    # print("Time: {}".format(total_time))
 
-    # draw_result(vectorized, num_clusters, km.labels_)
+    # # draw_result(vectorized, num_clusters, km.labels_)
 
-    # centers = [x for x in km.cluster_centers_]
+    # # centers = [x for x in km.cluster_centers_]
 
-    # nearest_letter = []
+    # # nearest_letter = []
 
-    # all = [(x[0], x[1], v, z)
-    # for x, v, z in zip(ordered_files, vectors, km.labels_) if len(z.data) !=
-    # 0]
+    # # all = [(x[0], x[1], v, z)
+    # # for x, v, z in zip(ordered_files, vectors, km.labels_) if len(z.data) !=
+    # # 0]
 
-    # with open('vectors.txt', 'w') as f:
-    #     for vec in vectors:
-    #         for x in vec.data:
-    #             f.write("{} ".format(x))
-    #         f.write("\n\n")
+    # # with open('vectors.txt', 'w') as f:
+    # #     for vec in vectors:
+    # #         for x in vec.data:
+    # #             f.write("{} ".format(x))
+    # #         f.write("\n\n")
 
-    # cluster_index = 0
+    # # cluster_index = 0
 
-    # for vec in centers:
-    #     letter = ""
-    #     min_dist = 100000
-    #     for i in all:
-    #         if cluster_index == i[3]:
-    #             dist = np.linalg.norm(vec - i[2])
-    #             if dist < min_dist:
-    #                 min_dist = dist
-    #                 letter = i[0]
-    #     cluster_index += 1
+    # # for vec in centers:
+    # #     letter = ""
+    # #     min_dist = 100000
+    # #     for i in all:
+    # #         if cluster_index == i[3]:
+    # #             dist = np.linalg.norm(vec - i[2])
+    # #             if dist < min_dist:
+    # #                 min_dist = dist
+    # #                 letter = i[0]
+    # #     cluster_index += 1
 
-    #     nearest_letter.append(letter)
+    # #     nearest_letter.append(letter)
 
-    # with open("nearest_letters.txt", 'w') as f:
-    #     k = 1
-    #     for letter in nearest_letter:
-    #         f.write("cluster {}:\n{}\n\n".format(k, letter))
-    #         k += 1
+    # # with open("nearest_letters.txt", 'w') as f:
+    # #     k = 1
+    # #     for letter in nearest_letter:
+    # #         f.write("cluster {}:\n{}\n\n".format(k, letter))
+    # #         k += 1
 
 
 if __name__ == '__main__':

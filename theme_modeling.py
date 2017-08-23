@@ -110,16 +110,28 @@ class topic_modeling(object):
             plt.show()
         if DIR:
             plt.savefig(DIR)
+##############################################
 def read_forum():
-    csv = files.csv_reading('forum_post.csv', False, None)
+    csv = files.csv_reading('./forum-data-fixed/forum_post.csv', False, None)
+    wrong_id =['91', '92', '144', '93', '129']
+    wrong_topics = []
+    topics_csv = files.csv_reading('./forum-data-fixed/forum_topic.csv', False, None)
+    for i in topics_csv:
+        if i[4] in wrong_id:
+            wrong_topics.append(i[2])
+
     users_text = {}
+    data = []
+    # for i in csv:
+    #     try:
+    #         users_text[i[4]].append([i[1], i[3]])
+    #     except:
+    #         users_text[i[4]] = [[i[1], i[3]]]
     for i in csv:
-        try:
-            users_text[i[4]].append([i[1], i[3]])
-        except:
-            users_text[i[4]] = [[i[1], i[3]]]
-        
-    return users_text
+        if i[2] in wrong_topics:
+            continue
+        data.append(i[3])        
+    return data
 
 def read_letters():
     import os
@@ -133,3 +145,10 @@ def read_letters():
     letters = [r.sub('', x) for x in letters]
 
     return letters 
+
+data = read_forum()
+
+tm = topic_modeling()
+tm.texts_to_words(data, stopwords_f='stopwords.txt')
+tm.modeling('hdp', num_topics=10)
+tm.circle_diagram(10, num_words=5, show=True)
